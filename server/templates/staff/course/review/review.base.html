@@ -1,0 +1,58 @@
+{% extends "staff/base.html" %}
+
+{% block title %} {{ assignment.display_name }} - {{ current_course.display_name_with_semester }}{% endblock %}
+
+{% block main %}
+  <section class="content-header">
+      <h1>
+        {{ assignment.display_name }}
+        <small>{{ current_course.offering }}</small>
+      </h1>
+      <ol class="breadcrumb">
+        <li><a href="{{ url_for(".course", cid=current_course.id) }}">
+            <i class="fa fa-university"></i> {{ current_course.offering }}
+        </a></li>
+        <li><a href="{{ url_for('.course_assignments', cid=current_course.id) }}">
+          <i class="fa fa-list"></i> Assignments</a>
+        </li>
+        <li class="active hidden-xs"><a href="{{ url_for('.assignment', cid=current_course.id, aid=assignment.id) }}"><i class="fa fa-book"></i> {{ assignment.display_name }} </a></li>
+      </ol>
+  </section>
+
+  <!-- Don't close the content section -->
+  <section class="content">
+      {% include 'alerts.html' %}
+        <!-- Default box -->
+        <div class="row">
+          <div class="col-md-4">
+            <div class="box box-solid">
+              <div class="box-header with-border">
+                <h3 class="box-title">Tools</h3>
+
+                <div class="box-tools">
+                  <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="box-body no-padding">
+                <ul class="nav nav-pills nav-stacked">
+                  <li {% if kind == "flake8" %}class="active"{% endif %}>
+                    <a href="{{ url_for('.flake8_setting', cid=current_course.id, aid=assignment.id) }}" type="button">flake8</a>
+                  </li>
+                  <li {% if kind == "clang" %}class="active"{% endif %}>
+                    <a href="{{ url_for('.clang_setting', cid=current_course.id, aid=assignment.id) }}" type="button">clang</a>
+                  </li>
+                </ul>
+              </div>
+              <!-- /.box-body -->
+            </div>
+            <!-- /. box -->
+          </div>
+
+          <div class="col-md-8">
+            {% block setting_content %}{% endblock %}
+          </div>
+        </div>
+
+  <!-- </body> do not close body in template-->
+{% endblock %}

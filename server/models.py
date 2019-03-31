@@ -369,6 +369,7 @@ class Assignment(Model):
     revisions_allowed = db.Column(db.Boolean(), nullable=False, default=False)
     autograding_key = db.Column(db.String(255))
     continuous_autograding = db.Column(db.Boolean(), default=False)
+    code_review_enabled = db.Column(db.Boolean(), nullable=False, default=False)
     uploads_enabled = db.Column(db.Boolean(), nullable=False, default=False)
     upload_info = db.Column(db.Text)
     published_scores = db.Column(StringList, nullable=False, default=[])
@@ -1963,3 +1964,19 @@ class Extension(Model):
         if user.is_admin:
             return True
         return user.is_enrolled(obj.course.id, STAFF_ROLES)
+
+##########
+# Review #
+##########
+
+
+class ReviewSetting(Model):
+    """ Code review tool settings. """
+    id = db.Column(db.Integer, primary_key=True)
+    kind = db.Column(db.String(40))
+    enable = db.Column(db.Boolean(), default=False)
+    content = db.Column(JsonBlob, nullable=False)
+    assignment_id = db.Column(db.ForeignKey("assignment.id"), index=True,
+                              nullable=False)
+
+    assignment = db.relationship("Assignment", backref="review_settings")

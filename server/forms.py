@@ -153,6 +153,8 @@ class AssignmentForm(BaseForm):
     autograding_key = StringField('Autograder Key', [validators.optional()])
     continuous_autograding = BooleanField('Send Submissions to Autograder Immediately',
                                          [validators.optional()])
+    code_review_enabled = BooleanField('Enable Code Review', default=False,
+                                       validators=[validators.optional()])
     uploads_enabled = BooleanField('Enable Web Uploads', default=True,
                                    validators=[validators.optional()])
     upload_info = StringField('Upload Instructions',
@@ -810,3 +812,42 @@ class CanvasAssignmentForm(BaseForm):
         choices=[(kind, kind.title()) for kind in SCORE_KINDS],
         validators=[validators.required()],
     )
+
+##########
+# Review #
+##########
+
+
+class ToolSettingBaseForm(BaseForm):
+    enable = BooleanField("Enable", default=False)
+
+    def __init__(self, obj=None, **kwargs):
+        if obj:
+            self.enable.data = obj.enable
+        super(ToolSettingBaseForm, self).__init__(obj=obj, **kwargs)
+
+
+class Flake8SettingForm(ToolSettingBaseForm):
+    max_line_length = IntegerField("Maximum Line Length", default=79,
+                                   validators=[validators.required()],
+                                   description="The maximum line length to allow.")
+    ignore = StringField("Ignore", default="",
+                         description="A comma-separated list of errors and warnings to ignore. This will be passed to the --ignore command line argument (e.g. E4,W).")
+
+    def __init__(self, obj=None, **kwargs):
+        if obj:
+            self.max_line_length.data = obj.content["max_line_length"]
+            self.ignore = obj.content["ignore"]
+        super(Flake8SettingForm, self).__init__(obj=obj, **kwargs)
+
+
+class ClangSettingForm(ToolSettingBaseForm):
+    cmdline_args = TextAreaField("Clang command-line arguments", default="",
+                                 description="Any additional arguments to include on the "
+                                             "command-line when invoking clang --analyze. "
+                                             "Used primarily to set include paths.")
+
+    def __init__(self, obj=None, **kwargs):
+        if obj:
+            self.cmdline_args.data = obj.content["cmdline_args"]
+        super(ClangSettingForm, self).__init__(obj=obj, **kwargs)

@@ -21,7 +21,7 @@ import server.controllers.api as ok_api
 from server.models import (User, Course, Assignment, Enrollment, Version,
                            GradingTask, Backup, Score, Group, Client, Job,
                            Message, CanvasCourse, CanvasAssignment, MossResult,
-                           Extension, db)
+                           Extension, db, ReviewSetting)
 from server.contrib import analyze
 
 from server.constants import (EMAIL_FORMAT, INSTRUCTOR_ROLE, STAFF_ROLES, STUDENT_ROLE,
@@ -2160,3 +2160,87 @@ def enroll_canvas_course(cid):
             canvas_course_id=canvas_course.id)
         return redirect(url_for('.course_job', cid=cid, job_id=job.id))
     abort(401)
+
+##########
+# Review #
+##########
+
+
+@admin.route("/course/<int:cid>/assignments/<int:aid>/flake8",
+             methods=["GET", "POST"])
+@is_staff(course_arg='cid')
+def flake8_setting(cid, aid):
+    courses, current_course = get_courses(cid)
+    assign = Assignment.query.filter_by(id=aid, course_id=cid).one_or_none()
+    if not assign or not Assignment.can(assign, current_user, 'grade'):
+        flash('Cannot access assignment', 'error')
+        return abort(404)
+    if not Assignment.can(assign, current_user, 'edit'):
+        flash('Insufficient permissions', 'error')
+        return abort(401)
+
+    setting = ReviewSetting.query.filter_by(assignment=assign, kind="flake8").one_or_none()
+    form = forms.Flake8SettingForm(obj=setting)
+
+    if form.validate_on_submit():
+        enable = form.enable.data
+        content = {"max_line_length": form.max_line_length.data,
+                   "ignore": form.ignore.data}
+        if setting:
+            setting.enable = enable
+            setting.content = content
+        else:
+            setting = ReviewSetting(assignment=assign,
+                                    kind="flake8",
+                                    enable=enable,
+                                    content=content)
+        db.session.add(setting)
+        db.session.commit()
+        flash("Setting success", "success")
+
+    return render_template(
+        'staff/course/review/review.flake8.html',
+        current_course=current_course,
+        assignment=assign,
+        kind="flake8",
+        form=form,
+    )
+
+@admin.route("/course/<int:cid>/assignments/<int:aid>/clang",
+             methods=["GET", "POST"])
+@is_staff(course_arg='cid')
+def clang_setting(cid, aid):
+    courses, current_course = get_courses(cid)
+    assign = Assignment.query.filter_by(id=aid, course_id=cid).one_or_none()
+    if not assign or not Assignment.can(assign, current_user, 'grade'):
+        flash('Cannot access assignment', 'error')
+        return abort(404)
+    if not Assignment.can(assign, current_user, 'edit'):
+        flash('Insufficient permissions', 'error')
+        return abort(401)
+
+    setting = ReviewSetting.query.filter_by(assignment=assign, kind="clang").one_or_none()
+    form = forms.ClangSettingForm(obj=setting)
+
+    if form.validate_on_submit():
+        enable = form.enable.data
+        content = {"cmdline_args": form.cmdline_args.data}
+        if setting:
+            setting.enable = enable
+            setting.content = content
+        else:
+            setting = ReviewSetting(assignment=assign,
+                                    kind="clang",
+                                    enable=enable,
+                                    content=content)
+        db.session.add(setting)
+        db.session.commit()
+        flash("Setting success", "success")
+
+    return render_template(
+        'staff/course/review/review.clang.html',
+        current_course=current_course,
+        assignment=assign,
+        kind="clang",
+        form=form,
+    )

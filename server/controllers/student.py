@@ -8,12 +8,14 @@ import logging
 import os
 import time
 
-from server import highlight, models, utils
+from server import highlight, models, utils, jobs
 from server.autograder import submit_continuous
 from server.constants import VALID_ROLES, STAFF_ROLES, STUDENT_ROLE, MAX_UPLOAD_FILE_SIZE
 from server.forms import CSRFForm, UploadSubmissionForm
+from server.jobs import review
 from server.models import (User, Course, Assignment, Group, Backup, Message,
                            ExternalFile, Extension, db)
+from server.review.flake8 import Flake8
 from server.utils import is_safe_redirect_url, send_emails, invite_email
 
 logger = logging.getLogger(__name__)
@@ -218,6 +220,16 @@ def submit_assignment(name):
                 submit_continuous(backup)
             except ValueError as e:
                 flash('Did not send to autograder: {}'.format(e), 'warning')
+
+        if assign.code_review_enabled:
+            jobs.enqueue_job(
+                review.review_code,
+                course_id=assign.course_id,
+                description="Code review for {}".format(backup.hashid),
+                timeout=600,
+                assign_id=assign.id,
+                backup_id=backup.id
+            )
 
         return jsonify({
             'backup': backup.hashid,
