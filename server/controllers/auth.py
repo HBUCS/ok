@@ -20,7 +20,7 @@ import logging
 from server import utils
 from server.models import db, User, Enrollment, Client, Token, Grant
 from server.extensions import csrf, oauth_provider, cache
-from server.constants import GOOGLE, MICROSOFT
+from server.constants import GOOGLE, MICROSOFT, HBUOJ
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ def record_params(setup_state):
     global oauth
     oauth = OAuth()
     app = setup_state.app
-    provider_name = app.config.get('OAUTH_PROVIDER', GOOGLE)
+    provider_name = app.config.get('OAUTH_PROVIDER', HBUOJ)
     provider_auth = oauth.remote_app(
         provider_name, 
         app_key=provider_name
@@ -71,12 +71,12 @@ def check_oauth_token(scopes=None):
     if valid:
         return req
 
-def user_from_email(email):
+def user_from_email(email, name="", is_admin=False):
     """Get a User with the given email, or create one."""
     user = User.lookup(email)
     if not user:
         logger.info("Creating user {}".format(email))
-        user = User(email=email)
+        user = User(email=email, name=name, is_admin=is_admin)
         db.session.add(user)
         db.session.commit()
     return user
@@ -84,6 +84,25 @@ def user_from_email(email):
 def google_oauth_request(token):
     """ Use fallback of Google Plus Endpoint Profile Info.
     """
+
+@cache.memoize(timeout=600)
+def hbuoj_user_data(token, timeout=5):
+    if not token:
+        logger.info("HBUOJ Token is None")
+        return None
+
+    user_info_url = current_app.config.get('HBUOJ')['user_info_url']
+    headers = {'Accept': 'application/json',
+               'Authorization': 'Bearer ' + token}
+    try:
+        res = requests.get(user_info_url, headers=headers, timeout=timeout)
+        if res.status_code != 200:
+            logger.error("HBUOJ returned non 200 status code: {}", res.status_code)
+        data = res.json()
+        return data["data"]
+    except requests.exceptions.Timeout:
+        logger.error("Timed out when using HBUOJ")
+        return None
 
 @cache.memoize(timeout=600)
 def google_user_data(token, timeout=5):
@@ -166,16 +185,23 @@ def user_from_provider_token(token):
         user_data = google_user_data(token)
     elif provider_name == MICROSOFT:
         user_data = microsoft_user_data(token)
+    else:
+        user_data = hbuoj_user_data(token)
 
     if not user_data or 'email' not in user_data:
         if provider_name == GOOGLE:
             cache.delete_memoized(google_user_data, token)
         elif provider_name == MICROSOFT:
             cache.delete_memoized(microsoft_user_data, token)
-
+        else:
+            cache.delete_memoized(hbuoj_user_data, token)
         logger.warning("Auth Retry failed for token {} - {}".format(token, user_data))
         return None
 
+    if provider_name == HBUOJ:
+        return user_from_email(user_data["email"],
+                               user_data["username"],
+                               user_data["admin_type"] == "Super Admin")
     return user_from_email(user_data['email'])
 
 login_manager = LoginManager()

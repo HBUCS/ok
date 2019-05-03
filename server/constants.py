@@ -58,6 +58,7 @@ FORBIDDEN_ASSIGNMENT_NAMES = []
 # Service Providers
 GOOGLE = "GOOGLE"
 MICROSOFT = "MICROSOFT"
+HBUOJ = "HBUOJ"
 
 # Maximum file size to show in browser, in characters
 DIFF_SIZE_LIMIT = 64 * 1024  # 64KB

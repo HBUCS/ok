@@ -67,6 +67,17 @@ class Config(object):
         request_token_params={'scope': 'offline_access User.Read'}
     )
 
+    HBUOJ = dict(
+        consumer_key=os.getenv('HBUOJ_APP_ID'),
+        consumer_secret=os.getenv('HBUOJ_APP_SECRET'),
+        base_url='http://localhost:8000/o/',
+        access_token_url='http://localhost:8000/o/token/',
+        authorize_url='http://localhost:8000/o/authorize/',
+        request_token_url=None,
+        access_token_method='POST',
+        user_info_url="http://localhost:8000/api/user_info/"
+    )
+
     @classmethod
     def initialize_config(cls):
 
